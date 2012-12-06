@@ -8,6 +8,14 @@
 # Only minimal timezone support exists. DateTime objects keep track of timezones supplied, and use timezones 
 # in difference calculations. However, no timezone conversion functionality is provided. DST is also not 
 # considered by this code. Both these items are cosidered to be the responsibility of the calling code. 
+module SimpleDate
+
+using Base
+import Base.+, Base.-, Base.<, Base.>, Base.==, Base.<=, Base.>=, Base.*, Base.show, Base.string, Base.isequal, Base.hash
+
+export MONTHS, SHORT_MONTHS, DAY_OF_WEEK, SHORT_DAY_OF_WEEK,
+	DateTime,Date,
+	date, datetime, yday, mday, wday, current_time_millis, current_time_micros, hour, month, now, civil, leap_year, +, -, *
 
 MONTHS = ["January" , "February", "March", "April", "May", "June", "July", "August", "Septempber", "October", "November", "December"]
 SHORT_MONTHS = ["Jan" , "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -47,7 +55,7 @@ function date(y::Int,m::Int,d::Int)
 	end
 end
 
-function datetime(y::Integer, m::Integer, d::Integer, hh::Integer, mm::Integer, ss::Integer, frac::Float, off::Float) #Offset in hours
+function datetime(y::Integer, m::Integer, d::Integer, hh::Integer, mm::Integer, ss::Integer, frac::FloatingPoint, off::FloatingPoint) #Offset in hours
 	jd = valid_date(int(y), int(m), int(d))
 	if jd==-1 
 		throw ("Invalid date: $y-$m-$d")
@@ -62,7 +70,7 @@ function datetime(y::Integer, m::Integer, d::Integer, hh::Integer, mm::Integer, 
 	datetime(y,m,d,hh,mm,ss,0.0, TZ_OFFSET)
 end
 
-function string{T<:Float}(dt::DateTime{T}) 
+function string{T<:FloatingPoint}(dt::DateTime{T}) 
 	(y,m,d, hh, mm, ss, fr) = civil(dt)
 	hoff = dt.off/4
 	"$(d) $(SHORT_MONTHS[m]) $(y) $(hh):$(mm):$(ss).$(string(round(fr*100)/100)[3:end]) ($(dec(int((floor(hoff)*100) + (hoff - floor(hoff))*60), 4))) "
@@ -102,7 +110,7 @@ end
 function now()
 	t = ccall(:clock_now, Float64, ())  #Seconds since unix epoch
 	tm = Array(Uint32, 14)
-    ccall(:localtime_r, Ptr{Void}, (Ptr{Int}, Ptr{Uint32}), &t, tm)
+    ccall(:localtime_r, Ptr{Void}, (Ptr{Int}, Ptr{Uint32}), &int(t), tm)
 	datetime( int(tm[6]) + 1900,  	#int tm_year
 			int(tm[5]) + 1 ,		#int tm_mon
 			int(tm[4]) ,			#int tm_mday
@@ -118,8 +126,8 @@ end
 function _default_zone() 
 	t = ccall(:clock_now, Float64, ())  #Seconds since unix epoch
 	tm = Array(Uint32, 14)
-    ccall(:localtime_r, Ptr{Void}, (Ptr{Int}, Ptr{Uint32}), &t, tm)
-    zone = cstring(convert(Ptr{Uint8}, ((uint64(0)|tm[14]) << 32 ) | tm[13])) #char *tm_zone
+    ccall(:localtime_r, Ptr{Void}, (Ptr{Int}, Ptr{Uint32}), &(int(t)), tm)
+    zone = bytestring(convert(Ptr{Uint8}, ((uint64(0)|tm[14]) << 32 ) | tm[13])) #char *tm_zone
     off = tm[11] / 3600
     return (off,zone)
 end
@@ -161,7 +169,7 @@ leap_year_yday_offset = [
 
 #Day of the year for any date 1=1JanYY, 365/366=31DecYY
 function yday(dt::DateTime)
-	y,m,d = _jd_to_date(dt.jd)
+	y,m,d = _jd_to_date(ifloor(dt.jd))
 	tm_year = y - 1900 ; 
     tm_year_mod400::Integer = tm_year % 400;
     tm_yday = d;
@@ -186,17 +194,18 @@ function is_julian(jd::Integer)
 	jd < 2299161 # Date of Gregorian Calendar Reform, ITALY; 1582-10-15 
 end
 
-function civil{T<:Float}(dt::DateTime{T})
-	return append(_jd_to_date(ifloor(dt.jd)), _day_frac_to_time(dt.jd-ifloor(dt.jd)))
+function civil{T<:FloatingPoint}(dt::DateTime{T})
+	return tuple(_jd_to_date(ifloor(dt.jd))..., _day_frac_to_time(dt.jd-ifloor(dt.jd))...)
 end
 
 function civil{T<:Integer}(dt::DateTime{T})
 	return _jd_to_date(dt.jd)
 end
 
-hour{T<:Float}(dt::DateTime{T}) = civil(dt)[4]
-minute{T<:Float}(dt::DateTime{T}) = civil(dt)[5]
-second{T<:Float}(dt::DateTime{T}) = civil(dt)[6]
+
+hour{T<:FloatingPoint}(dt::DateTime{T}) = civil(dt)[4]
+minute{T<:FloatingPoint}(dt::DateTime{T}) = civil(dt)[5]
+second{T<:FloatingPoint}(dt::DateTime{T}) = civil(dt)[6]
 mday(dt::DateTime) = civil(dt)[3]
 month(dt::DateTime) = civil(dt)[2]
 year(dt::DateTime) = civil(dt)[1]
@@ -259,11 +268,11 @@ function valid_date(y,m,d)
 	end
 end
 
-function _ajd_to_jd(ajd::Real, off::Float)
+function _ajd_to_jd(ajd::Real, off::FloatingPoint)
 	ajd + off + 0.5
 end
 
-function _jd_to_ajd(jd::Real, off::Float)
+function _jd_to_ajd(jd::Real, off::FloatingPoint)
 	jd -off - 0.5
 end
 
@@ -298,7 +307,7 @@ const months = Month(1);
 (*)(x::Integer, y::Month) = Month(x);
 
 
-
+end #module
 
 
 

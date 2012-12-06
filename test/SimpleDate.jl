@@ -1,5 +1,7 @@
 
-load("SimpleDate")
+load("SimpleDate/src/SimpleDate")
+load("test/runtests")
+using SimpleDate
 
 @assert yday(date(2012, 1,1)) == 1
 @assert yday(date(2012, 1,2)) == 2
@@ -22,9 +24,9 @@ load("SimpleDate")
 @assert date(2012, 4,10).jd == 2456028 #Today
 @assert date(0,1,1).jd == 1721058  #Start of A.D
 @assert date(-4712, 1, 1).jd == 0  #Start of Julian day count
-@assert _jd_to_date(_date_to_jd(2018, 9,10)) == (2018,9,10)
-@assert _jd_to_date(_date_to_jd(2018, 9,10)+365) == (2019,9,10)
-@assert _jd_to_date(_date_to_jd(2018, 9,10)+365+366) == (2020,9,10) #2020 is a leap year
+@assert SimpleDate._jd_to_date(SimpleDate._date_to_jd(2018, 9,10)) == (2018,9,10)
+@assert SimpleDate._jd_to_date(SimpleDate._date_to_jd(2018, 9,10)+365) == (2019,9,10)
+@assert SimpleDate._jd_to_date(SimpleDate._date_to_jd(2018, 9,10)+365+366) == (2020,9,10) #2020 is a leap year
 
 
 @assert date(1969, 12, 31) + 1 == date(1970, 1,1)
@@ -60,10 +62,10 @@ function test_week_cycle()
 		 d = d+1
 	end
 
-	d=date(2012, 4, 1)
-	for i=1:100000
-	    @assert wday(d) == ((-i+1)%7)+1
-	    d = d-1
+	d=date(2012, 3, 31)
+	for i=2:100000; 
+        @assert wday(d) == ((-i+2)%7)+7
+        d = d-1
     end
 end
 
@@ -78,7 +80,7 @@ test_week_cycle()
 @assert typeof(datetime(2012, 4,24,14,0,0, 0.0, 1.0)) == DateTime{Float64}
 #Test unix time and julian days are congruous, upto second accuracy
 #ifloor(strptime("Tue 24 Apr 13:57:16 2012")) = 1335275836
-@assert ifloor((datetime(2012, 4,24, 13,57, 16, 0.0, 1.0).jd-_UNIXEPOCH)*86400) - 1335275836 == 0
+@assert ifloor((datetime(2012, 4,24, 13,57, 16, 0.0, 1.0).jd-SimpleDate._UNIXEPOCH)*86400) - 1335275836 == 0
 
 @assert_approx_eq ( datetime(2012, 4, 24, 13,0,0) - datetime(2012, 4,24,14,0,0)  ) * 24  -1
 @assert isa(datetime(2012, 4, 24, 13,0,0) - datetime(2012, 4,24,14,0,0), Float64)
